@@ -15,13 +15,66 @@
 #include <arpa/inet.h>
 
 #include <errno.h>
+
 #define PORT 8080
+#define write(x, y, z) netwrite(x, y, z)
+
+ssize_t netwrite(int fildes, const void *buf, size_t nbyte);
+
+void error(char *msg)
+{
+    perror(msg);
+    exit(0);
+}
 
 int netserverinit(char* hostname, int filemode) {
 	// --- checks that hostname "basic.cs.rutgers.edu" exists...
 	// --- it does!, returns 0, do not set errno
 	//int netfd = netopen("/.autofs/ilab/ilab_users/deymious/test.c", O_RDWR);
-	
+	int sockfd, n;
+
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
+
+    char buffer[256];
+    
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+
+    server = gethostbyname(hostname);
+
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
+    serv_addr.sin_port = htons(PORT);
+
+
+    
+    if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
+        error("ERROR connecting");
+
+    printf("Please enter the message: ");
+    bzero(buffer,256);
+    fgets(buffer,255,stdin);
+    n = write(sockfd,buffer,strlen(buffer));
+
+    if (n < 0) 
+         error("ERROR writing to socket");
+
+    bzero(buffer,256);
+    n = read(sockfd,buffer,255);
+
+    if (n < 0) 
+         error("ERROR reading from socket");
+     
+    printf("%s\n",buffer);
 	return -1;
 }
 
@@ -32,7 +85,7 @@ int netclose(int fd)
 }
 
 ssize_t netwrite(int fildes, const void *buf, size_t nbyte)
-{
+{	
 
 	return 1;
 }
@@ -99,18 +152,18 @@ int netopen(const char *pathname, int flags)
 
 	return 0;
 }
+// Client side C/C++ program to demonstrate Socket programming
 
 
-  
-int main(int argc, char const *argv[])
+
+int main(int argc, char *argv[])
 {
-    
+    if (argc < 3) {
+       fprintf(stderr,"usage %s hostname port\n", argv[0]);
+       exit(0);
+    }
 
-
-
-
+    int x = netserverinit(argv[1], 0);
 
     return 0;
-
-
 }
