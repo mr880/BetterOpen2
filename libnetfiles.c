@@ -1,25 +1,4 @@
-#include <stdio.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-#include <unistd.h>
-
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <netinet/in.h>
-#include <string.h>
-
-#include <netdb.h>
-#include <arpa/inet.h>
-
-#include <errno.h>
-
-#define PORT 8080
-#define write(x, y, z) netwrite(x, y, z)
-
-ssize_t netwrite(int fildes, const void *buf, size_t nbyte);
+#include "libnetfiles.h"
 
 void error(char *msg)
 {
@@ -32,7 +11,7 @@ int netserverinit(char* hostname, int filemode) {
 	// --- it does!, returns 0, do not set errno
 	//int netfd = netopen("/.autofs/ilab/ilab_users/deymious/test.c", O_RDWR);
 	int sockfd, n;
-
+	int h_errno;
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
@@ -46,9 +25,12 @@ int netserverinit(char* hostname, int filemode) {
     server = gethostbyname(hostname);
 
     if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
+        fprintf(stderr,"ERROR, no such host\nfailure: returning with value -1\n");
+        h_errno = HOST_NOT_FOUND;
+        return -1;
     }
+    else
+    	return 0;
 
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -57,24 +39,26 @@ int netserverinit(char* hostname, int filemode) {
 
 
     
-    if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
-        error("ERROR connecting");
+    // if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
+    //     error("ERROR connecting");
 
-    printf("Please enter the message: ");
-    bzero(buffer,256);
-    fgets(buffer,255,stdin);
-    n = write(sockfd,buffer,strlen(buffer));
+    // printf("Please enter the message: ");
+    // bzero(buffer,256);
+    // fgets(buffer,255,stdin);
 
-    if (n < 0) 
-         error("ERROR writing to socket");
+    // n = write(sockfd,buffer,strlen(buffer));
 
-    bzero(buffer,256);
-    n = read(sockfd,buffer,255);
+    // if (n < 0) 
+    //     error("ERROR writing to socket");
 
-    if (n < 0) 
-         error("ERROR reading from socket");
+    // bzero(buffer,256);
+
+    // n = read(sockfd,buffer,255);
+
+    // if (n < 0) 
+    //      error("ERROR reading from socket");
      
-    printf("%s\n",buffer);
+    // printf("%s\n",buffer);
 	return -1;
 }
 
@@ -87,7 +71,8 @@ int netclose(int fd)
 ssize_t netwrite(int fildes, const void *buf, size_t nbyte)
 {	
 
-	return 1;
+	return send(fildes, buf, strlen(buf), 0);
+	
 }
 
 ssize_t netread(int fildes, void *buf, size_t nbyte)
@@ -127,7 +112,7 @@ ssize_t netread(int fildes, void *buf, size_t nbyte)
 
 	// printf("buf: %s\n", buf);
 
-	return 1;
+	return recv(fildes, buf, nbyte, 0);
 }
 
 int netopen(const char *pathname, int flags)
@@ -159,11 +144,15 @@ int netopen(const char *pathname, int flags)
 int main(int argc, char *argv[])
 {
     if (argc < 3) {
-       fprintf(stderr,"usage %s hostname port\n", argv[0]);
+       fprintf(stderr,"usage %s hostname file_connection_mode\n", argv[0]);
        exit(0);
     }
 
-    int x = netserverinit(argv[1], 0);
+    if(netserverinit(argv[1], argv[2]) == -1)
+    	return -1;
+    
+    
+
 
     return 0;
 }
